@@ -1,0 +1,12 @@
+{
+  "name": "vulnerable-frontend",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.17.1",
+    "lodash": "^4.17.20",
+    "axios": "^0.21.0",
+    "moment": "^2.29.2",
+    "minimist": "^1.2.5",
+    "jsonwebtoken": "^8.5.1"
+  }
+}

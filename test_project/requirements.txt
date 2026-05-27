@@ -1,0 +1,8 @@
+django==3.2.10
+flask==0.12.4
+requests==2.19.0
+pillow==9.0.0
+pyyaml==5.3.1
+cryptography==40.0.0
+paramiko==2.9.2
+urllib3==1.26.13

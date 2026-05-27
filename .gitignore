@@ -1,0 +1,41 @@
+# ─── Secrets & Keys ───────────────────────────────────────────────────────
+.env
+*.env.local
+.env.production
+.env.staging
+secrets.json
+*_secret*
+*_key.pem
+*.pem
+*.key
+*.pfx
+*.p12
+id_rsa
+id_ed25519
+
+# ─── Python ───────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+venv/
+.venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+*.log
+
+# ─── Reports (may contain sensitive code snippets) ────────────────────────
+reports/*.json
+reports/*.pdf
+
+# ─── Editors & OS ─────────────────────────────────────────────────────────
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*~
