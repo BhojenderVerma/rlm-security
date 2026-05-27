@@ -63,9 +63,15 @@ def render_report(report) -> str:
             sev_class = f.severity
             html += f"""
             <div class="finding-box {sev_class}">
-                <div class="finding-title">[{f.severity}] {f.title}</div>
-                <div class="finding-desc">{f.description}</div>
-                <div class="finding-rec">💡 {f.recommendation}</div>
+                <div class="finding-title" style="font-size: 1.1em; color: #1f2937;">🔴 {f.title}</div>
+                <div style="margin-top: 8px;">
+                    <strong style="color: #4b5563;">🤔 What is the bug?</strong>
+                    <div class="finding-desc" style="margin-top: 2px;">{f.description}</div>
+                </div>
+                <div style="margin-top: 8px;">
+                    <strong style="color: #4b5563;">✅ How to fix it:</strong>
+                    <div class="finding-rec" style="margin-top: 2px;">{f.recommendation}</div>
+                </div>
             </div>
             """
     return html
@@ -79,7 +85,7 @@ def run_static(file_obj):
     try:
         files = load_zip(file_obj.name)
         if not files:
-            return "⚠️ No valid source files found in ZIP.", None
+            return "⚠️ No valid source files found in ZIP.", None, None
             
         agent = RootAgent(max_workers=4)
         report = agent.scan(files, source=file_obj.name, source_type="zip")
@@ -98,9 +104,20 @@ def run_static(file_obj):
         # Re-calculate summary after deduplication
         report.summary = agent._build_summary(report.file_results)
         
-        return render_report(report), report.model_dump_json(indent=2)
+        # Generate PDF
+        try:
+            from rlm.output import generate_pdf
+            import tempfile
+            pdf_path = os.path.join(tempfile.gettempdir(), f"scan_report_{uuid.uuid4().hex[:8]}.pdf")
+            generate_pdf(report, pdf_path)
+            pdf_out = pdf_path
+        except Exception as e:
+            print("PDF generation error:", e)
+            pdf_out = None
+        
+        return render_report(report), report.model_dump_json(indent=2), pdf_out
     except Exception as e:
-        return f"<div style='color: red; padding: 20px;'>❌ Error during static scan: {str(e)}</div>", None
+        return f"<div style='color: red; padding: 20px;'>❌ Error during static scan: {str(e)}</div>", None, None
 
 
 # ── UI Layout ────────────────────────────────────────────────────────────
@@ -125,9 +142,11 @@ with gr.Blocks(theme=theme, css=css, title="RLM Security Scanner") as demo:
             results_html = gr.HTML("<div style='text-align: center; color: #6B7280; padding: 40px;'>Results will appear here after scanning.</div>")
         with gr.Tab("Raw JSON Report"):
             results_json = gr.Code(language="json", label="JSON Report")
+        with gr.Tab("Download PDF"):
+            results_pdf = gr.File(label="Download PDF Report")
 
     # Wire up buttons
-    static_btn.click(fn=run_static, inputs=[file_input], outputs=[results_html, results_json])
+    static_btn.click(fn=run_static, inputs=[file_input], outputs=[results_html, results_json, results_pdf])
 
 
 if __name__ == "__main__":
