@@ -4,7 +4,6 @@ import uuid
 from datetime import datetime
 import gradio as gr
 from rlm.core import RootAgent
-from rlm.dast.scanner import DastScanner
 from rlm.input import load_zip
 
 # ── Styles ──────────────────────────────────────────────────────────────
@@ -72,17 +71,6 @@ def render_report(report) -> str:
     return html
 
 
-def run_dast(url: str, max_pages: int):
-    if not url:
-        return "⚠️ Please enter a URL.", None
-    
-    try:
-        scanner = DastScanner(url=url, max_pages=int(max_pages), max_depth=2, delay_ms=100)
-        report = scanner.scan()
-        return render_report(report), report.model_dump_json(indent=2)
-    except Exception as e:
-        return f"<div style='color: red; padding: 20px;'>❌ Error during DAST scan: {str(e)}</div>", None
-
 
 def run_static(file_obj):
     if file_obj is None:
@@ -95,6 +83,21 @@ def run_static(file_obj):
             
         agent = RootAgent(max_workers=4)
         report = agent.scan(files, source=file_obj.name, source_type="zip")
+        
+        # Deduplicate findings by title and line number
+        for f_result in report.file_results:
+            seen = set()
+            unique_findings = []
+            for finding in f_result.findings:
+                key = (finding.title, finding.location.line_start if finding.location else 0)
+                if key not in seen:
+                    seen.add(key)
+                    unique_findings.append(finding)
+            f_result.findings = unique_findings
+            
+        # Re-calculate summary after deduplication
+        report.summary = agent._build_summary(report.file_results)
+        
         return render_report(report), report.model_dump_json(indent=2)
     except Exception as e:
         return f"<div style='color: red; padding: 20px;'>❌ Error during static scan: {str(e)}</div>", None
@@ -104,22 +107,14 @@ def run_static(file_obj):
 
 with gr.Blocks(theme=theme, css=css, title="RLM Security Scanner") as demo:
     gr.HTML("<h1>🔒 RLM Security Scanner</h1>")
-    gr.HTML("<h3>Recursive LLM-based Vulnerability Scanner (v2.0)</h3>")
+    gr.HTML("<h3>Source Code Vulnerability Scanner (SAST)</h3>")
     
     with gr.Tabs():
-        # DAST Tab
-        with gr.Tab("🌐 Website Scanner (DAST)"):
-            gr.Markdown("Dynamic Application Security Testing (DAST). Enter a live website URL to check for misconfigurations, SSL issues, missing security headers, Reflected XSS, and Open Redirects.")
-            with gr.Row():
-                url_input = gr.Textbox(label="Target URL", placeholder="https://example.com", scale=4)
-                pages_input = gr.Slider(minimum=1, maximum=100, value=10, step=1, label="Max Pages to Crawl", scale=1)
-            dast_btn = gr.Button("🚀 Start DAST Scan", variant="primary")
-        
         # Static Tab
-        with gr.Tab("📁 Source Code Scanner (SAST)"):
-            gr.Markdown("Static Application Security Testing (SAST). Upload a `.zip` file containing your source code to scan it against 16 deep vulnerability analyzers.")
+        with gr.Tab("📁 Source Code Scanner"):
+            gr.Markdown("Upload a `.zip` file containing your source code to scan it against our deep vulnerability analyzers.")
             file_input = gr.File(label="Upload Project ZIP", file_types=[".zip"])
-            static_btn = gr.Button("🚀 Start Static Scan", variant="primary")
+            static_btn = gr.Button("🚀 Start Scan", variant="primary")
             
     # Results Area
     gr.Markdown("---")
@@ -132,7 +127,6 @@ with gr.Blocks(theme=theme, css=css, title="RLM Security Scanner") as demo:
             results_json = gr.Code(language="json", label="JSON Report")
 
     # Wire up buttons
-    dast_btn.click(fn=run_dast, inputs=[url_input, pages_input], outputs=[results_html, results_json])
     static_btn.click(fn=run_static, inputs=[file_input], outputs=[results_html, results_json])
 
 
@@ -140,4 +134,5 @@ if __name__ == "__main__":
     # Render assigns a port dynamically via the PORT environment variable
     port = int(os.environ.get("PORT", 7860))
     demo.launch(server_name="0.0.0.0", server_port=port)
+
 
