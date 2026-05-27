@@ -4,7 +4,7 @@
 .env.production
 .env.staging
 secrets.json
-*_secret*
+*_secret.json
 *_key.pem
 *.pem
 *.key
