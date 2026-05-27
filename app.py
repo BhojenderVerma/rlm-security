@@ -137,4 +137,7 @@ with gr.Blocks(theme=theme, css=css, title="RLM Security Scanner") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    # Render assigns a port dynamically via the PORT environment variable
+    port = int(os.environ.get("PORT", 7860))
+    demo.launch(server_name="0.0.0.0", server_port=port)
+
